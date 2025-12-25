@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graficador de cosenos </title>
+    <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+    <div class="background-animate"></div>
+    <div class="glass-card">
+        <header>
+            <h1>Graficando cosenos<span>PRO</span></h1>
+            <p>Valores Coseno</p>
+        </header>
+
+        <div class="main-controls">
+            <div class="input-wrapper">
+                <input type="text" id="cosValue" placeholder="Valor (-1 a 1)" onkeypress="validarEntrada(event)">
+            </div>
+            <button class="btn-add" onclick="agregarPunto()">Graficar</button>
+        </div>
+
+        <div class="action-bar">
+            <button id="btnUnir" class="toggle-btn" onclick="toggleLineas()">
+                <span class="icon">🔗</span> Unir Puntos
+            </button>
+            <button class="clear-btn" onclick="limpiarTodo()">
+                <span class="icon">🗑️</span> Limpiar
+            </button>
+        </div>
+
+        <p id="error" class="error-msg"></p>
+
+        <div class="canvas-container">
+            <canvas id="planoCartesiano" width="500" height="400"></canvas>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
