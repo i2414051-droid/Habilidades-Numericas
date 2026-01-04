@@ -1,144 +1,102 @@
 const canvas = document.getElementById('planoCartesiano');
 const ctx = canvas.getContext('2d');
-const escalaY = 150;
-let puntos = [];
-let unirPuntos = false;
 
-// Función para inicializar y dibujar el fondo del plano
+// Configuraciones de precisión
+const escalaY = 100; // Cuántos píxeles mide 1 unidad (Amplitud)
+const escalaX = 50;  // Píxeles por cada radián (Frecuencia)
+let puntosUsuario = [];
+let unirPuntos = true;
+
 function dibujarPlano() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const originY = canvas.height / 2;
     const originX = canvas.width / 2;
 
-    // Dibujar rejilla de fondo sutil
-    ctx.strokeStyle = "#f1f5f9";
-    ctx.lineWidth = 1;
-    for(let i=0; i<canvas.width; i+=40) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
-        ctx.stroke();
-    }
-
-    // Ejes principales
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 2;
+    // Dibujar la curva "Guía" (La función coseno matemática pura)
     ctx.beginPath();
-    ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); // Eje X
-    ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); // Eje Y
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.05)"; // Gris muy suave
+    ctx.lineWidth = 2;
+    for (let x = 0; x < canvas.width; x++) {
+        // Traducimos el píxel X a un valor matemático
+        const valorMatematicoX = (x - originX) / escalaX;
+        const valorMatematicoY = Math.cos(valorMatematicoX);
+        const y = originY - (valorMatematicoY * escalaY);
+        
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
     ctx.stroke();
 
-    // Etiquetas de referencia en el eje Y
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "bold 12px Inter, sans-serif";
-    ctx.fillText("1.0", originX + 10, originY - escalaY + 5);
-    ctx.fillText("-1.0", originX + 10, originY + escalaY + 5);
-    ctx.fillText("0", originX + 10, originY + 15);
+    // Ejes Cartesianos
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY);
+    ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height);
+    ctx.stroke();
+
+    // Marcas de precisión (1, 0, -1)
+    ctx.fillStyle = "#64748b";
+    ctx.font = "12px monospace";
+    ctx.fillText(" 1.0", originX + 5, originY - escalaY);
+    ctx.fillText("-1.0", originX + 5, originY + escalaY);
+    ctx.fillText(" 0", originX + 5, originY + 15);
 }
 
 function agregarPunto() {
     const input = document.getElementById('cosValue');
-    const errorEtiqueta = document.getElementById('error');
-    let grados = parseFloat(input.value.replace(',', '.'));
+    const valorIngresado = parseFloat(input.value.replace(',', '.'));
 
-    // Validación: ahora aceptamos cualquier ángulo en grados
-    if (isNaN(grados)) {
-        errorEtiqueta.innerText = "¡Oye! Ingresa un número válido (ej: 45, 90, 180).";
+    // Validación para que sea preciso: Buscamos el ángulo cuyo coseno sea el valor
+    // Usamos Math.acos para encontrar el ángulo exacto
+    if (isNaN(valorIngresado) || valorIngresado < -1 || valorIngresado > 1) {
+        document.getElementById('error').innerText = "Valor fuera de rango (-1 a 1)";
         return;
     }
 
-    errorEtiqueta.innerText = "";
-
-    // LÓGICA MATEMÁTICA: Convertir grados a radianes y calcular coseno
-    const radianes = grados * (Math.PI / 180);
-    const resultadoCoseno = Math.cos(radianes);
-
-    // Guardamos el objeto con el valor calculado y el ángulo original
-    puntos.push({ 
-        valor: resultadoCoseno, 
-        angulo: grados,
-        color: "#6366f1" 
+    document.getElementById('error').innerText = "";
+    
+    // El ángulo en radianes es el arco coseno del valor
+    const anguloRadianes = Math.acos(valorIngresado);
+    
+    puntosUsuario.push({
+        xMat: anguloRadianes,
+        yMat: valorIngresado,
+        label: valorIngresado
     });
 
     dibujarTodo();
     input.value = "";
-    input.focus();
 }
 
 function dibujarTodo() {
     dibujarPlano();
     const originY = canvas.height / 2;
-    const spacing = 50; // Espacio horizontal entre puntos
+    const originX = canvas.width / 2;
 
-    // Calcular el desplazamiento para que los puntos queden centrados o se muevan
-    const totalWidth = (puntos.length - 1) * spacing;
-    const startX = (canvas.width / 2) - (totalWidth / 2);
+    puntosUsuario.forEach(p => {
+        // Posicionamiento preciso basado en matemáticas
+        const canvasX = originX + (p.xMat * escalaX);
+        const canvasY = originY - (p.yMat * escalaY);
 
-    // 1. Dibujar líneas (si la opción está activa)
-    if (unirPuntos && puntos.length > 1) {
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.6)";
-        ctx.lineWidth = 3;
-        ctx.lineJoin = "round";
-        
-        puntos.forEach((p, i) => {
-            const x = startX + (i * spacing);
-            const y = originY - (p.valor * escalaY);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-    }
-
-    // 2. Dibujar puntos y etiquetas
-    puntos.forEach((p, i) => {
-        const x = startX + (i * spacing);
-        const y = originY - (p.valor * escalaY);
-
-        // Brillo del punto
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "rgba(99, 102, 241, 0.8)";
+        // Dibujar el punto con brillo
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#6366f1";
         ctx.fillStyle = "#6366f1";
-        
         ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.arc(canvasX, canvasY, 5, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Limpiar sombra para el texto
         ctx.shadowBlur = 0;
 
-        // Etiqueta del valor (coseno)
+        // Etiqueta de precisión
         ctx.fillStyle = "#1e293b";
-        ctx.font = "bold 10px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(p.valor.toFixed(2), x, y - 15);
-
-        // Etiqueta del ángulo (grados)
-        ctx.fillStyle = "#64748b";
-        ctx.fillText(p.angulo + "°", x, originY + 20);
+        ctx.fillText(`cos⁻¹(${p.label})`, canvasX + 8, canvasY - 8);
     });
 }
 
-function toggleLineas() {
-    unirPuntos = !unirPuntos;
-    const btn = document.getElementById('btnUnir');
-    btn.classList.toggle('active');
-    // Cambiar el texto del botón visualmente
-    btn.innerHTML = unirPuntos ? "<span>✔️</span> Conectado" : "<span>🔗</span> Unir Puntos";
-    dibujarTodo();
-}
-
 function limpiarTodo() {
-    puntos = [];
-    document.getElementById('error').innerText = "";
+    puntosUsuario = [];
     dibujarPlano();
 }
 
-// Permitir presionar "Enter" para graficar
-function validarEntrada(event) {
-    if (event.key === "Enter") {
-        agregarPunto();
-    }
-}
-
-// Dibujo inicial
 dibujarPlano();
